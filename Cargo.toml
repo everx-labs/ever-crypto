@@ -18,5 +18,5 @@ sha2 = '0.9'
 tokio = { features = [ 'rt-multi-thread' ], version = '1.5' }
 x25519-dalek = '1.2'
 
-ton_api = { git = 'ssh://git@github.com/tonlabs/ton-tl.git', package = 'ton_api'}
-ton_types = { git = 'ssh://git@github.com/tonlabs/ton-types.git' }
+ton_api = { git = 'https://github.com/tonlabs/ton-labs-tl.git', package = 'ton_api'}
+ton_types = { git = 'https://github.com/tonlabs/ton-labs-types.git' }
