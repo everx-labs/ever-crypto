@@ -19,4 +19,3 @@ serde = { features = [ 'derive', 'rc' ], version = '1.0.105' }
 tokio = { features = [ 'rt-multi-thread' ], version = '1.5' }
 ton_api = { git = 'https://github.com/tonlabs/ton-labs-tl', package = 'ton_api', tag = '0.2.120' }
 ton_types = { git = 'https://github.com/tonlabs/ton-labs-types', tag = '1.10.12' }
-
