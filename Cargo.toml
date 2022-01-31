@@ -8,8 +8,8 @@ aes-ctr = '0.6.0'
 async-trait = '0.1.22'
 base64 = '0.13'
 curve25519-dalek = '3.2'
-ed25519 = '1.0'
-ed25519-dalek = '1.0'
+ed25519 = '1.0.1'
+ed25519-dalek = '1.0.0-pre.4'
 failure = '0.1.6'
 rand = '0.7'
 serde_json = '1.0.41'
@@ -19,8 +19,26 @@ serde = { features = [ 'derive', 'rc' ], version = '1.0.105' }
 tokio = { features = [ 'rt-multi-thread' ], version = '1.5' }
 ton_api = { git = 'https://github.com/tonlabs/ever-tl.git', package = 'ton_api', tag = '0.3.27' }
 ton_types = { git = 'https://github.com/tonlabs/ever-types.git', tag = '2.0.19' }
+ever_bls_lib = { git = 'ssh://git@github.com/tonlabs/ever-bls-lib.git' }
 
 [features]
 default = [  ]
 export_key = [  ]
 
+[patch.'https://github.com/tonlabs/ever-types.git']
+ton_types = { git = 'https://git@github.com:443/tonlabs/ever-types.git', tag = '1.12.7' }
+
+[patch.'ssh://git@github.com/tonlabs/ever-types-private.git']
+ton_types = { git = 'https://git@github.com:443/tonlabs/ever-types.git', tag = '1.12.7' }
+
+[patch.'https://github.com/tonlabs/ton-labs-block.git']
+ton_block = { branch = 'feature-use-bls-key', git = 'ssh://git@github.com:22/tonlabs/ever-block-private.git' }
+
+[patch.'ssh://git@github.com/tonlabs/ever-block-private.git']
+ton_block = { branch = 'feature-use-bls-key', git = 'ssh://git@github.com:22/tonlabs/ever-block-private.git' }
+
+[patch.'ssh://git@github.com/tonlabs/ever-tl-private.git']
+ton_api = { branch = 'feature-use-bls-keys', git = 'ssh://git@github.com:22/tonlabs/ever-tl-private.git', package = 'ton_api' }
+
+[patch.'https://github.com/tonlabs/ever-tl.git']
+ton_api = { branch = 'feature-use-bls-keys', git = 'ssh://git@github.com:22/tonlabs/ever-tl-private.git', package = 'ton_api' }
