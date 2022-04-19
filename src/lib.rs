@@ -25,6 +25,25 @@ pub fn sha256_digest(data: &[u8]) -> [u8; 32] {
     sha2::Sha256::digest(data).into()
 }
 
+pub struct Sha2 {
+    sha_256: sha2::Sha256
+}
+
+impl Sha2 {
+    pub fn new() -> Self {
+        let sha_256 = sha2::Sha256::new();
+        Self { sha_256 }
+    }
+
+    pub fn update(&mut self, msg: &[u8]) {
+        self.sha_256.update(msg)
+    }
+
+    pub fn finalize(self) -> [u8; 32] {
+        self.sha_256.finalize().into()
+    }
+}
+
 pub struct AesCtr {
     aes_ctr: aes_ctr::Aes256Ctr
 }
