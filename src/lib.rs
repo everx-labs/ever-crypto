@@ -4,17 +4,25 @@ use ed25519::signature::Verifier;
 use sha2::Digest;
 use std::{
     convert::TryInto, fmt::{self, Debug, Display, Formatter},
-    sync::Arc};
+    sync::Arc
+};
 
-use ton_api::{deserialize_boxed, IntoBoxed, ton::{self, pub_::publickey::Ed25519} };
+use ever_bls_lib::{bls::{BLS_PUBLIC_KEY_LEN, BLS_SECRET_KEY_LEN}};
+use ton_api::{deserialize_boxed, IntoBoxed, ton::{self, pub_::publickey::{Bls, Ed25519}} };
 use ton_types::{error, fail, Result, UInt256};
 
 pub trait KeyOption: Sync + Send + Debug {
+    /// Get key id 
     fn id(&self) -> &Arc<KeyId>;
+    /// Get type id 
     fn type_id(&self) -> i32;
+    /// Get public key
     fn pub_key(&self) -> Result<&[u8]>;
+    /// Calculate signature
     fn sign(&self, data: &[u8]) -> Result<Vec<u8>>;
+    /// Verify signature
     fn verify(&self, data: &[u8], signature: &[u8]) -> Result<()>;
+    /// Export into TL object with public key 
     fn into_public_key_tl(&self) -> Result<ton::PublicKey>;
     #[cfg(feature = "export_key")]
     fn export_key(&self) -> Result<&[u8]>;
@@ -59,6 +67,165 @@ impl AesCtr {
     pub fn apply_keystream(&mut self, buf: &mut Vec<u8>, range: Range<usize>) {
         self.aes_ctr.apply_keystream(&mut buf[range]);
     }
+}
+
+#[derive(Debug)]
+pub struct BlsKeyOption {
+    id: Arc<KeyId>,
+    pub_key: [u8; BLS_PUBLIC_KEY_LEN],
+    pvt_key: Option<[u8; BLS_SECRET_KEY_LEN]>
+}
+
+impl BlsKeyOption {
+    pub const KEY_TYPE: i32 = 007;
+
+    pub fn generate_with_json() -> Result<(KeyOptionJson, Arc<dyn KeyOption>)> {
+        let key = Self::generate()?;
+        let json = KeyOptionJson {
+            type_id: Self::KEY_TYPE,
+            pub_key: Some(base64::encode(&key.pub_key)),
+            pvt_key: key.pvt_key.map(|val| base64::encode(val))
+        };
+
+        Ok((json, Arc::new(key)))
+    }
+
+    pub fn from_private_key_json(json: &KeyOptionJson) -> Result<Arc<dyn KeyOption>> {
+        let pub_key: [u8; BLS_PUBLIC_KEY_LEN] = match &json.pub_key {
+            Some(pub_key) => {
+                let pub_key = base64::decode(pub_key)?;
+                pub_key.as_slice().try_into()?
+            },
+            None => fail!("Bad public key")
+        };
+
+        let pvt_key: [u8; BLS_SECRET_KEY_LEN] = match &json.pvt_key {
+            Some(pvt_key) => {
+                let pvt_key = base64::decode(pvt_key)?;
+                pvt_key.as_slice().try_into()?
+            },
+            None => fail!("Bad private key")
+        };
+
+        Ok(Arc::new(Self {
+            id: Self::calc_id(&pub_key),
+             pub_key: pub_key,
+            pvt_key: Some(pvt_key)
+        }))
+    }
+
+    /// Create from bls public key TL object
+    pub fn from_public_key_tl(src: &ton::PublicKey) -> Result<Arc<dyn KeyOption>> {
+        if let ton::PublicKey::Pub_Bls(key) = src {
+            match key.bls_key.0.clone().try_into() {
+                Ok(pub_key) => Ok(Self::from_public_key(pub_key)),
+                Err(key) => fail!("Wrong length {} of key: {:?}", key.len(), key)
+            }
+        } else {
+            fail!("Unsupported public key type {:?}", src)
+        }
+    }
+
+    /// Create from serialized bls public key TL object
+    pub fn from_public_key_tl_serialized(pub_key: &[u8]) -> Result<Arc<dyn KeyOption>> {
+        match deserialize_boxed(pub_key)?.downcast::<ton::PublicKey>() {
+            Ok(pub_key) => Self::from_public_key_tl(&pub_key),
+            Err(key) => fail!("Unsupported PublicKey data {:?}", key)
+        }
+    }
+
+    /// Create from bls public key raw data
+    pub fn from_public_key(pub_key: [u8; BLS_PUBLIC_KEY_LEN]) -> Arc<dyn KeyOption> {
+        Arc::new(
+            Self {
+                id: Self::calc_id(&pub_key), 
+                pub_key: pub_key, 
+                pvt_key: None
+            }
+        )
+    }
+
+
+    fn generate() -> Result<Self> {
+        let (pub_key, pvt_key) = ever_bls_lib::bls::gen_bls_key_pair()?;
+        Ok(Self {
+            id: Self::calc_id(&pub_key),
+            pub_key: pub_key,
+            pvt_key: Some(pvt_key)
+        })
+    }
+
+    // Calculate key ID
+    fn calc_id(pub_key: &[u8; BLS_PUBLIC_KEY_LEN]) -> Arc<KeyId> {
+        let mut sha = sha2::Sha256::new();
+        sha.update(pub_key);
+        KeyId::from_data(sha.finalize().into())
+    }
+
+    fn pvt_key(&self) -> Result<&[u8; BLS_SECRET_KEY_LEN]> {
+        match &self.pvt_key {
+            Some(pvt_key) => Ok(pvt_key), 
+            None => fail!("private bls key was not found!")
+        }
+    }
+}
+
+impl KeyOption for BlsKeyOption {
+    /// Get key id
+    fn id(&self) -> &Arc<KeyId> {
+        &self.id
+    }
+    /// Get type id 
+    fn type_id(&self) -> i32 {
+        Self::KEY_TYPE
+    }
+
+    /// Get public key
+    fn pub_key(&self) -> Result<&[u8]> {
+        Ok(self.pub_key.as_ref())
+    }
+
+    /// Calculate simple signature
+    fn sign(&self, data: &[u8]) -> Result<Vec<u8>> {
+        let sign = ever_bls_lib::bls::sign(self.pvt_key()?, &data.to_vec())?;
+        Ok(sign.try_into()?)
+    }
+
+    /// Verify signature
+    fn verify(&self, data: &[u8], signature: &[u8]) -> Result<()> {
+        let status = ever_bls_lib::bls::verify(
+            signature.try_into()?, 
+            &data.to_vec(), &self.pub_key
+        )?;
+
+        if !status {
+            fail!("bad signature!");
+        }
+
+        Ok(())
+    }
+
+    /// Export into TL object with public key 
+    fn into_public_key_tl(&self) -> Result<ton::PublicKey> {
+        let pub_key = self.pub_key()?;
+        let ret = Bls { 
+            bls_key: ton::bytes(pub_key.to_vec())
+        }.into_boxed();
+        Ok(ret)
+    }
+
+    #[cfg(feature = "export_key")]
+    fn export_key(&self) -> Result<&[u8]> {
+        match self.pvt_key.as_ref() {
+            Some(pvt_key) => Ok(pvt_key),
+            None => fail!("pvt_key is None")
+        }
+    }
+
+    fn shared_secret(&self, _other_pub_key: &[u8]) -> Result<[u8; 32]> {
+        fail!("shared_secret not implemented for BlsKeyOption!")
+    }
+
 }
 
 #[derive(Debug)]
@@ -312,4 +479,10 @@ pub struct KeyOptionJson {
     type_id: i32,
     pub_key: Option<String>,
     pvt_key: Option<String>
+}
+
+impl KeyOptionJson {
+    pub fn type_id(&self) -> &i32 {
+        &self.type_id
+    }
 }
