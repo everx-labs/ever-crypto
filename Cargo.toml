@@ -1,7 +1,7 @@
 [package]
-name = 'ever-crypto'
-version = '0.1.37'
 edition = '2018'
+name = 'ever-crypto'
+version = '0.1.38'
 
 [dependencies]
 aes-ctr = '0.6.0'
@@ -23,3 +23,4 @@ ton_types = { git = 'https://github.com/tonlabs/ton-labs-types.git', tag = '1.11
 [features]
 default = [  ]
 export_key = [  ]
+
