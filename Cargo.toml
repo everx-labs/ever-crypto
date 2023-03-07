@@ -1,7 +1,7 @@
 [package]
 edition = '2018'
 name = 'ever-crypto'
-version = '0.1.94'
+version = '0.1.95'
 
 [dependencies]
 aes-ctr = '0.6.0'
@@ -17,7 +17,7 @@ sha2 = '0.9'
 x25519-dalek = '1.2'
 serde = { features = [ 'derive', 'rc' ], version = '1.0.105' }
 tokio = { features = [ 'rt-multi-thread' ], version = '1.5' }
-ton_api = { git = 'https://github.com/tonlabs/ever-tl.git', package = 'ton_api', tag = '0.2.181' }
+ton_api = { git = 'https://github.com/tonlabs/ever-tl.git', package = 'ton_api', tag = '0.2.182' }
 ton_types = { git = 'https://github.com/tonlabs/ever-types.git', tag = '1.12.7' }
 
 [features]
