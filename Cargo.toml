@@ -17,8 +17,8 @@ sha2 = '0.9'
 x25519-dalek = '1.2'
 serde = { features = [ 'derive', 'rc' ], version = '1.0.105' }
 tokio = { features = [ 'rt-multi-thread' ], version = '1.5' }
-ton_api = { git = 'https://github.com/tonlabs/ever-tl.git', package = 'ton_api', tag = '0.2.197' }
-ton_types = { git = 'https://github.com/tonlabs/ever-types.git', tag = '2.0.4' }
+ton_api = { git = 'ssh://git@github.com/tonlabs/ever-tl.git', package = 'ton_api', tag = 'tag-test-ci-pipeline' }
+ton_types = { git = 'ssh://git@github.com/tonlabs/ever-types.git', tag = 'tag-test-ci-pipeline' }
 
 [features]
 default = [  ]
